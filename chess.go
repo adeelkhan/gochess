@@ -49,13 +49,139 @@ func haveKing(board *Board, color string, i, j int) bool {
 	piece, _ := board.get(i, j)
 	return piece != nil && string(piece.getName()[0]) == "+" && color != piece.getColor()
 }
+func getKingValidMoves(board *Board, color string, frow, fcol int) []string {
+	validMoves := make([]string, 0)
+
+	i := frow
+	j := fcol
+	if i+1 < 8 { // down
+		piece, _ := board.get(i+1, j)
+		if piece == nil || piece.getColor() != color {
+			move, _ := GetBoardNotation(i+1, j)
+			validMoves = append(validMoves, move)
+		}
+	}
+
+	i = frow
+	j = fcol
+	if i-1 >= 0 { // up
+		piece, _ := board.get(i-1, j)
+		if piece == nil || piece.getColor() != color {
+			move, _ := GetBoardNotation(i-1, j)
+			validMoves = append(validMoves, move)
+		}
+	}
+	i = frow
+	j = fcol
+	if j+1 < 8 { // right
+		piece, _ := board.get(i, j+1)
+		if piece == nil || piece.getColor() != color {
+			move, _ := GetBoardNotation(i, j+1)
+			validMoves = append(validMoves, move)
+		}
+	}
+	i = frow
+	j = fcol
+	if j-1 >= 0 { // left
+		piece, _ := board.get(i, j-1)
+		if piece == nil || piece.getColor() != color {
+			move, _ := GetBoardNotation(i, j-1)
+			validMoves = append(validMoves, move)
+		}
+	}
+	i = frow
+	j = fcol
+	if i+1 < 8 && j+1 < 8 { // right diag down
+		piece, _ := board.get(i+1, j+1)
+		if piece == nil || piece.getColor() != color {
+			move, _ := GetBoardNotation(i+1, j+1)
+			validMoves = append(validMoves, move)
+		}
+	}
+	i = frow
+	j = fcol
+	if i-1 >= 0 && j+1 < 8 { // right diag up
+		piece, _ := board.get(i-1, j+1)
+		if piece == nil || piece.getColor() != color {
+			move, _ := GetBoardNotation(i-1, j+1)
+			validMoves = append(validMoves, move)
+		}
+	}
+	i = frow
+	j = fcol
+	if i+1 < 8 && j-1 >= 0 { // left diag down
+		piece, _ := board.get(i+1, j-1)
+		if piece == nil || piece.getColor() != color {
+			move, _ := GetBoardNotation(i+1, j-1)
+			validMoves = append(validMoves, move)
+		}
+	}
+	i = frow
+	j = fcol
+	if i-1 >= 0 && j-1 >= 0 { // left diag up
+		piece, _ := board.get(i-1, j-1)
+		if piece == nil || piece.getColor() != color {
+			move, _ := GetBoardNotation(i-1, j-1)
+			validMoves = append(validMoves, move)
+		}
+	}
+
+	return validMoves
+
+}
+func isCheckMate(board *Board, color string) bool {
+	var kingLoc string
+	if color == "white" {
+		kingLoc = board.getKingLocation("black")
+	} else {
+		kingLoc = board.getKingLocation("white")
+	}
+	rowInd, _ := strconv.Atoi(string(kingLoc[1]))
+	row, col := GetIndex(string(kingLoc[0]), rowInd)
+	kingPossibleMoves := getKingValidMoves(board, color, row, col)
+
+	possibleMoves := make([]string, 0)
+	keys := make(map[string]bool)
+
+	// find all possible moves for colored player
+	for i := 0; i < 8; i++ {
+		for j := 0; j < 8; j++ {
+			piece, _ := board.get(i, j)
+			if piece != nil && piece.getColor() == color {
+				fmt.Println(piece.getName())
+				pieceMoves := piece.getAllMoves(i, j)
+				fmt.Println(piece.getName(), " ", pieceMoves)
+				for _, entry := range pieceMoves {
+					if _, value := keys[entry]; !value {
+						keys[entry] = true
+						possibleMoves = append(possibleMoves, entry)
+					}
+				}
+			}
+		}
+	}
+
+	totalMoves := len(kingPossibleMoves)
+	i := 0
+	for _, kingMove := range kingPossibleMoves {
+		for _, opponentMove := range possibleMoves {
+			if kingMove == opponentMove {
+				i++
+			}
+		}
+	}
+	if i == totalMoves { // if all possible king moves are subset of opponent moves
+		return true
+	}
+	return false
+}
 
 ///////////////////////
 
 // Piece structures
 type Piece interface {
 	move(color string, frow, fcol, trow, tcol int) error
-	getAllMoves(color string, frow, fcol int) []string
+	getAllMoves(frow, fcol int) []string
 	String() string
 	getColor() string
 	getName() string
@@ -73,27 +199,26 @@ func (k King) move(color string, frow, fcol, trow, tcol int) error {
 		return errors.New("Invalid move: Can't move other player piece.")
 	}
 
-	// check validity of pawn moves
 	validMoves := k.getValidMoves(color, frow, fcol)
 	destPlace, _ := GetBoardNotation(trow, tcol)
 
 	if Contains(validMoves, destPlace) != true {
-		return errors.New("Invalid move: Rook cant be moved there")
+		return errors.New("Invalid move: King cant be moved there")
 	}
 
-	// everthing is ok now move
 	src, _ := k.board.get(frow, fcol)
 	dest, _ := k.board.get(trow, tcol)
-	if dest != nil && src.getColor() != dest.getColor() { // capture piece
+	if dest != nil && src.getColor() != dest.getColor() {
 		fmt.Println("Capturing", dest.getName())
 	}
 	if k.isCheck(color, trow, tcol) == true {
-		fmt.Println("Check!")
+		fmt.Println("Cant move there, there is a check!")
+		return nil
 	}
 	k.board.set(frow, fcol, nil)
 	k.board.set(trow, tcol, src)
 
-	fmt.Println(validMoves)
+	k.board.setKingLocation(k.getColor(), destPlace)
 	return nil
 }
 
@@ -102,7 +227,7 @@ func (k King) getValidMoves(color string, frow, fcol int) []string {
 
 	i := frow
 	j := fcol
-	for i+1 < 8 { // down
+	if i+1 < 8 { // down
 		piece, _ := k.board.get(i+1, j)
 		if piece == nil || piece.getColor() != color {
 			move, _ := GetBoardNotation(i+1, j)
@@ -112,7 +237,7 @@ func (k King) getValidMoves(color string, frow, fcol int) []string {
 
 	i = frow
 	j = fcol
-	for i-1 >= 0 { // up
+	if i-1 >= 0 { // up
 		piece, _ := k.board.get(i-1, j)
 		if piece == nil || piece.getColor() != color {
 			move, _ := GetBoardNotation(i-1, j)
@@ -121,7 +246,7 @@ func (k King) getValidMoves(color string, frow, fcol int) []string {
 	}
 	i = frow
 	j = fcol
-	for j+1 < 8 { // right
+	if j+1 < 8 { // right
 		piece, _ := k.board.get(i, j+1)
 		if piece == nil || piece.getColor() != color {
 			move, _ := GetBoardNotation(i, j+1)
@@ -130,7 +255,7 @@ func (k King) getValidMoves(color string, frow, fcol int) []string {
 	}
 	i = frow
 	j = fcol
-	for j-1 >= 0 { // left
+	if j-1 >= 0 { // left
 		piece, _ := k.board.get(i, j-1)
 		if piece == nil || piece.getColor() != color {
 			move, _ := GetBoardNotation(i, j-1)
@@ -139,7 +264,7 @@ func (k King) getValidMoves(color string, frow, fcol int) []string {
 	}
 	i = frow
 	j = fcol
-	for i+1 < 8 && j+1 < 8 { // right diag down
+	if i+1 < 8 && j+1 < 8 { // right diag down
 		piece, _ := k.board.get(i+1, j+1)
 		if piece == nil || piece.getColor() != color {
 			move, _ := GetBoardNotation(i+1, j+1)
@@ -148,7 +273,7 @@ func (k King) getValidMoves(color string, frow, fcol int) []string {
 	}
 	i = frow
 	j = fcol
-	for i-1 >= 0 && j+1 < 8 { // right diag up
+	if i-1 >= 0 && j+1 < 8 { // right diag up
 		piece, _ := k.board.get(i-1, j+1)
 		if piece == nil || piece.getColor() != color {
 			move, _ := GetBoardNotation(i-1, j+1)
@@ -173,17 +298,18 @@ func (k King) getValidMoves(color string, frow, fcol int) []string {
 			validMoves = append(validMoves, move)
 		}
 	}
-
+	fmt.Println(validMoves)
 	return validMoves
 }
-func (k King) getAllMoves(color string, frow, fcol int) []string {
+func (k King) getAllMoves(frow, fcol int) []string {
 	validMoves := make([]string, 0)
+	kingColor := k.getColor()
 
 	i := frow
 	j := fcol
-	for i+1 < 8 { // down
+	if i+1 < 8 { // down
 		piece, _ := k.board.get(i+1, j)
-		if piece == nil || piece.getColor() == color {
+		if piece == nil || piece.getColor() == kingColor {
 			move, _ := GetBoardNotation(i+1, j)
 			validMoves = append(validMoves, move)
 		}
@@ -191,45 +317,45 @@ func (k King) getAllMoves(color string, frow, fcol int) []string {
 
 	i = frow
 	j = fcol
-	for i-1 >= 0 { // up
+	if i-1 >= 0 { // up
 		piece, _ := k.board.get(i-1, j)
-		if piece == nil || piece.getColor() == color {
+		if piece == nil || piece.getColor() == kingColor {
 			move, _ := GetBoardNotation(i-1, j)
 			validMoves = append(validMoves, move)
 		}
 	}
 	i = frow
 	j = fcol
-	for j+1 < 8 { // right
+	if j+1 < 8 { // right
 		piece, _ := k.board.get(i, j+1)
-		if piece == nil || piece.getColor() == color {
+		if piece == nil || piece.getColor() == kingColor {
 			move, _ := GetBoardNotation(i, j+1)
 			validMoves = append(validMoves, move)
 		}
 	}
 	i = frow
 	j = fcol
-	for j-1 >= 0 { // left
+	if j-1 >= 0 { // left
 		piece, _ := k.board.get(i, j-1)
-		if piece == nil || piece.getColor() == color {
+		if piece == nil || piece.getColor() == kingColor {
 			move, _ := GetBoardNotation(i, j-1)
 			validMoves = append(validMoves, move)
 		}
 	}
 	i = frow
 	j = fcol
-	for i+1 < 8 && j+1 < 8 { // right diag down
+	if i+1 < 8 && j+1 < 8 { // right diag down
 		piece, _ := k.board.get(i+1, j+1)
-		if piece == nil || piece.getColor() != color {
+		if piece == nil || piece.getColor() == kingColor {
 			move, _ := GetBoardNotation(i+1, j+1)
 			validMoves = append(validMoves, move)
 		}
 	}
 	i = frow
 	j = fcol
-	for i-1 >= 0 && j+1 < 8 { // right diag up
+	if i-1 >= 0 && j+1 < 8 { // right diag up
 		piece, _ := k.board.get(i-1, j+1)
-		if piece == nil || piece.getColor() != color {
+		if piece == nil || piece.getColor() == kingColor {
 			move, _ := GetBoardNotation(i-1, j+1)
 			validMoves = append(validMoves, move)
 		}
@@ -238,7 +364,7 @@ func (k King) getAllMoves(color string, frow, fcol int) []string {
 	j = fcol
 	if i+1 < 8 && j-1 >= 0 { // left diag down
 		piece, _ := k.board.get(i+1, j-1)
-		if piece == nil || piece.getColor() == color {
+		if piece == nil || piece.getColor() == kingColor {
 			move, _ := GetBoardNotation(i+1, j-1)
 			validMoves = append(validMoves, move)
 		}
@@ -247,7 +373,7 @@ func (k King) getAllMoves(color string, frow, fcol int) []string {
 	j = fcol
 	if i-1 >= 0 && j-1 >= 0 { // left diag up
 		piece, _ := k.board.get(i-1, j-1)
-		if piece == nil || piece.getColor() == color {
+		if piece == nil || piece.getColor() == kingColor {
 			move, _ := GetBoardNotation(i-1, j-1)
 			validMoves = append(validMoves, move)
 		}
@@ -257,12 +383,21 @@ func (k King) getAllMoves(color string, frow, fcol int) []string {
 
 func (k King) isCheck(color string, row, col int) bool {
 	validMoves := make([]string, 0)
+	keys := make(map[string]bool)
+
 	for i := 0; i < 8; i++ {
 		for j := 0; j < 8; j++ {
 			piece, _ := k.board.get(i, j)
 			if piece != nil && piece.getColor() != color {
-				pieceMoves := piece.getAllMoves(color, i, j)
-				validMoves = append(validMoves, pieceMoves...)
+				fmt.Println(piece.getName())
+				pieceMoves := piece.getAllMoves(i, j)
+				fmt.Println(piece.getName(), " ", pieceMoves)
+				for _, entry := range pieceMoves {
+					if _, value := keys[entry]; !value {
+						keys[entry] = true
+						validMoves = append(validMoves, entry)
+					}
+				}
 			}
 		}
 	}
@@ -434,21 +569,18 @@ func (q Queen) getValidMoves(color string, frow, fcol int) []string {
 	return validMoves
 }
 
-func (q Queen) getAllMoves(color string, frow, fcol int) []string {
+func (q Queen) getAllMoves(frow, fcol int) []string {
 	validMoves := make([]string, 0)
+	queenColor := q.getColor()
 
 	i := frow
 	j := fcol
 	for i+1 < 8 { // down
 		piece, _ := q.board.get(i+1, j)
-		if piece == nil {
+		if piece == nil || piece.getColor() == queenColor {
 			move, _ := GetBoardNotation(i+1, j)
 			validMoves = append(validMoves, move)
 			i++
-		} else if piece.getColor() == color {
-			move, _ := GetBoardNotation(i+1, j)
-			validMoves = append(validMoves, move)
-			break
 		} else {
 			break
 		}
@@ -458,14 +590,10 @@ func (q Queen) getAllMoves(color string, frow, fcol int) []string {
 	j = fcol
 	for i-1 >= 0 { // up
 		piece, _ := q.board.get(i-1, j)
-		if piece == nil {
+		if piece == nil || piece.getColor() == queenColor {
 			move, _ := GetBoardNotation(i-1, j)
 			validMoves = append(validMoves, move)
 			i--
-		} else if piece.getColor() == color {
-			move, _ := GetBoardNotation(i-1, j)
-			validMoves = append(validMoves, move)
-			break
 		} else {
 			break
 		}
@@ -474,14 +602,10 @@ func (q Queen) getAllMoves(color string, frow, fcol int) []string {
 	j = fcol
 	for j+1 < 8 { // right
 		piece, _ := q.board.get(i, j+1)
-		if piece == nil {
+		if piece == nil || piece.getColor() == queenColor {
 			move, _ := GetBoardNotation(i, j+1)
 			validMoves = append(validMoves, move)
 			j++
-		} else if piece.getColor() == color {
-			move, _ := GetBoardNotation(i, j+1)
-			validMoves = append(validMoves, move)
-			break
 		} else {
 			break
 		}
@@ -490,14 +614,10 @@ func (q Queen) getAllMoves(color string, frow, fcol int) []string {
 	j = fcol
 	for j-1 >= 0 { // left
 		piece, _ := q.board.get(i, j-1)
-		if piece == nil {
+		if piece == nil || piece.getColor() == queenColor {
 			move, _ := GetBoardNotation(i, j-1)
 			validMoves = append(validMoves, move)
 			j--
-		} else if piece.getColor() == color {
-			move, _ := GetBoardNotation(i, j-1)
-			validMoves = append(validMoves, move)
-			break
 		} else {
 			break
 		}
@@ -507,15 +627,11 @@ func (q Queen) getAllMoves(color string, frow, fcol int) []string {
 	for i+1 < 8 && j+1 < 8 { // right diag down
 		piece, _ := q.board.get(i+1, j+1)
 
-		if piece == nil {
+		if piece == nil || piece.getColor() == queenColor {
 			move, _ := GetBoardNotation(i+1, j+1)
 			validMoves = append(validMoves, move)
 			i++
 			j++
-		} else if piece.getColor() == color {
-			move, _ := GetBoardNotation(i+1, j+1)
-			validMoves = append(validMoves, move)
-			break
 		} else {
 			break
 		}
@@ -525,15 +641,12 @@ func (q Queen) getAllMoves(color string, frow, fcol int) []string {
 	j = fcol
 	for i-1 >= 0 && j+1 < 8 { // right diag up
 		piece, _ := q.board.get(i-1, j+1)
-		if piece == nil {
+		if piece == nil || piece.getColor() == queenColor {
 			move, _ := GetBoardNotation(i-1, j+1)
 			validMoves = append(validMoves, move)
 			i--
 			j++
-		} else if piece.getColor() == color {
-			move, _ := GetBoardNotation(i-1, j+1)
-			validMoves = append(validMoves, move)
-			break
+
 		} else {
 			break
 		}
@@ -542,15 +655,12 @@ func (q Queen) getAllMoves(color string, frow, fcol int) []string {
 	j = fcol
 	for i+1 < 8 && j-1 >= 0 { // left diag down
 		piece, _ := q.board.get(i+1, j-1)
-		if piece == nil {
+		if piece == nil || piece.getColor() == queenColor {
 			move, _ := GetBoardNotation(i+1, j-1)
 			validMoves = append(validMoves, move)
 			i++
 			j--
-		} else if piece.getColor() == color {
-			move, _ := GetBoardNotation(i+1, j-1)
-			validMoves = append(validMoves, move)
-			break
+
 		} else {
 			break
 		}
@@ -559,15 +669,11 @@ func (q Queen) getAllMoves(color string, frow, fcol int) []string {
 	j = fcol
 	for i-1 >= 0 && j-1 >= 0 { // left diag up
 		piece, _ := q.board.get(i-1, j-1)
-		if piece == nil {
+		if piece == nil || piece.getColor() == queenColor {
 			move, _ := GetBoardNotation(i-1, j-1)
 			validMoves = append(validMoves, move)
 			i--
 			j--
-		} else if piece.getColor() == color {
-			move, _ := GetBoardNotation(i-1, j-1)
-			validMoves = append(validMoves, move)
-			break
 		} else {
 			break
 		}
@@ -658,23 +764,26 @@ func (q Queen) move(color string, frow, fcol, trow, tcol int) error {
 	destPlace, _ := GetBoardNotation(trow, tcol)
 
 	if Contains(validMoves, destPlace) != true {
-		return errors.New("Invalid move: Rook cant be moved there")
+		return errors.New("Invalid move: Queen cant be moved there")
 	}
 
 	src, _ := q.board.get(frow, fcol)
 	dest, _ := q.board.get(trow, tcol)
-	if dest != nil && src.getColor() != dest.getColor() { // capture piece
-		fmt.Println("capturing", dest.getName())
+	if dest != nil && src.getColor() != dest.getColor() {
+		fmt.Println("Capturing", dest.getName())
 	}
 	if q.isCheck(color, trow, tcol) == true {
-		fmt.Println("Check!")
+		if isCheckMate(q.board, q.getColor()) == true {
+			fmt.Println("Check mate!")
+		} else {
+			fmt.Println("Check!")
+		}
+		return nil
 	}
 	q.board.set(frow, fcol, nil)
 	q.board.set(trow, tcol, src)
 
-	fmt.Println(validMoves)
 	return nil
-
 }
 func (q Queen) String() string {
 	return fmt.Sprintf(q.name)
@@ -698,27 +807,29 @@ func (b Bishop) move(color string, frow, fcol, trow, tcol int) error {
 		return errors.New("Invalid move: Can't move other player piece.")
 	}
 
-	// check validity of pawn moves
 	validMoves := b.getValidMoves(color, frow, fcol)
 	destPlace, _ := GetBoardNotation(trow, tcol)
 
 	if Contains(validMoves, destPlace) != true {
-		return errors.New("Invalid move: Rook cant be moved there")
+		return errors.New("Invalid move: Bishop cant be moved there")
 	}
 
-	// everthing is ok now move
 	src, _ := b.board.get(frow, fcol)
 	dest, _ := b.board.get(trow, tcol)
-	if dest != nil && src.getColor() != dest.getColor() { // capture piece
-		fmt.Println("capturing", dest.getName())
+	if dest != nil && src.getColor() != dest.getColor() {
+		fmt.Println("Capturing", dest.getName())
 	}
 	if b.isCheck(color, trow, tcol) == true {
-		fmt.Println("Check!")
+		if isCheckMate(b.board, b.getColor()) == true {
+			fmt.Println("Check mate!")
+		} else {
+			fmt.Println("Check!")
+		}
+		return nil
 	}
 	b.board.set(frow, fcol, nil)
 	b.board.set(trow, tcol, src)
 
-	fmt.Println(validMoves)
 	return nil
 }
 
@@ -732,23 +843,20 @@ func (b Bishop) getName() string {
 	return b.name
 }
 
-func (b Bishop) getAllMoves(color string, frow, fcol int) []string {
+func (b Bishop) getAllMoves(frow, fcol int) []string {
 	validMoves := make([]string, 0)
+	bishopColor := b.getColor()
 
 	i := frow
 	j := fcol
 	for i+1 < 8 && j+1 < 8 { // right diag down
 		piece, _ := b.board.get(i+1, j+1)
 
-		if piece == nil {
+		if piece == nil || piece.getColor() == bishopColor {
 			move, _ := GetBoardNotation(i+1, j+1)
 			validMoves = append(validMoves, move)
 			i++
 			j++
-		} else if piece.getColor() == color {
-			move, _ := GetBoardNotation(i+1, j+1)
-			validMoves = append(validMoves, move)
-			break
 		} else {
 			break
 		}
@@ -758,15 +866,11 @@ func (b Bishop) getAllMoves(color string, frow, fcol int) []string {
 	j = fcol
 	for i-1 >= 0 && j+1 < 8 { // right diag up
 		piece, _ := b.board.get(i-1, j+1)
-		if piece == nil {
+		if piece == nil || piece.getColor() == bishopColor {
 			move, _ := GetBoardNotation(i-1, j+1)
 			validMoves = append(validMoves, move)
 			i--
 			j++
-		} else if piece.getColor() == color {
-			move, _ := GetBoardNotation(i-1, j+1)
-			validMoves = append(validMoves, move)
-			break
 		} else {
 			break
 		}
@@ -775,15 +879,11 @@ func (b Bishop) getAllMoves(color string, frow, fcol int) []string {
 	j = fcol
 	for i+1 < 8 && j-1 >= 0 { // left diag down
 		piece, _ := b.board.get(i+1, j-1)
-		if piece == nil {
+		if piece == nil || piece.getColor() == bishopColor {
 			move, _ := GetBoardNotation(i+1, j-1)
 			validMoves = append(validMoves, move)
 			i++
 			j--
-		} else if piece.getColor() == color {
-			move, _ := GetBoardNotation(i+1, j-1)
-			validMoves = append(validMoves, move)
-			break
 		} else {
 			break
 		}
@@ -792,15 +892,11 @@ func (b Bishop) getAllMoves(color string, frow, fcol int) []string {
 	j = fcol
 	for i-1 >= 0 && j-1 >= 0 { // left diag up
 		piece, _ := b.board.get(i-1, j-1)
-		if piece == nil {
+		if piece == nil || piece.getColor() == bishopColor {
 			move, _ := GetBoardNotation(i-1, j-1)
 			validMoves = append(validMoves, move)
 			i--
 			j--
-		} else if piece.getColor() == color {
-			move, _ := GetBoardNotation(i-1, j-1)
-			validMoves = append(validMoves, move)
-			break
 		} else {
 			break
 		}
@@ -930,7 +1026,31 @@ type Knight struct {
 }
 
 func (k Knight) move(color string, frow, fcol, trow, tcol int) error {
-	return errors.New("Invalid move")
+	ownPiece := isOwn(k.color, color)
+	if ownPiece != true {
+		return errors.New("Invalid move: Can't move other player piece.")
+	}
+
+	// check validity of pawn moves
+	validMoves := k.getValidMoves(color, frow, fcol)
+	destPlace, _ := GetBoardNotation(trow, tcol)
+
+	if Contains(validMoves, destPlace) != true {
+		return errors.New("Invalid move: Knight cant be moved there")
+	}
+
+	src, _ := k.board.get(frow, fcol)
+	dest, _ := k.board.get(trow, tcol)
+	if dest != nil && src.getColor() != dest.getColor() {
+		fmt.Println("Capturing", dest.getName())
+	}
+	if k.isCheck(color, trow, tcol) == true {
+		fmt.Println("Check!")
+	}
+	k.board.set(frow, fcol, nil)
+	k.board.set(trow, tcol, src)
+
+	return nil
 }
 
 func (k Knight) getValidMoves(color string, frow, fcol int) []string {
@@ -951,18 +1071,18 @@ func (k Knight) getValidMoves(color string, frow, fcol int) []string {
 	//   k
 	i = frow
 	j = fcol
-	for i-2 >= 0 && j+1 < 8 {
+	if i-2 >= 0 && j+1 < 8 {
 		piece, _ := k.board.get(i-2, j+1)
 		if piece == nil || piece.getColor() != color {
 			move, _ := GetBoardNotation(i-2, j+1)
 			validMoves = append(validMoves, move)
 		}
 	}
-	//   |-k
-	//   v
+	//     k
+	//   v-|
 	i = frow
 	j = fcol
-	for i+2 < 8 && j-1 >= 0 {
+	if i+2 < 8 && j-1 >= 0 {
 		piece, _ := k.board.get(i+2, j-1)
 		if piece == nil || piece.getColor() != color {
 			move, _ := GetBoardNotation(i+2, j-1)
@@ -973,7 +1093,7 @@ func (k Knight) getValidMoves(color string, frow, fcol int) []string {
 	//    v
 	i = frow
 	j = fcol
-	for i+2 >= 0 && j+1 >= 0 {
+	if i+2 < 8 && j+1 < 8 {
 		piece, _ := k.board.get(i+2, j+1)
 		if piece == nil || piece.getColor() != color {
 			move, _ := GetBoardNotation(i+2, j+1)
@@ -984,7 +1104,7 @@ func (k Knight) getValidMoves(color string, frow, fcol int) []string {
 	//   v
 	i = frow
 	j = fcol
-	for i+1 >= 0 && j-2 >= 0 {
+	if i+1 < 8 && j-2 >= 0 {
 		piece, _ := k.board.get(i+1, j-2)
 		if piece == nil || piece.getColor() != color {
 			move, _ := GetBoardNotation(i+1, j-2)
@@ -995,7 +1115,7 @@ func (k Knight) getValidMoves(color string, frow, fcol int) []string {
 	//   |--k
 	i = frow
 	j = fcol
-	for i-1 >= 0 && j-2 >= 0 {
+	if i-1 >= 0 && j-2 >= 0 {
 		piece, _ := k.board.get(i-1, j-2)
 		if piece == nil || piece.getColor() != color {
 			move, _ := GetBoardNotation(i-1, j-2)
@@ -1006,7 +1126,7 @@ func (k Knight) getValidMoves(color string, frow, fcol int) []string {
 	//   k--|
 	i = frow
 	j = fcol
-	for i-1 >= 0 && j+2 >= 0 {
+	if i-1 >= 0 && j+2 < 8 {
 		piece, _ := k.board.get(i-1, j+2)
 		if piece == nil || piece.getColor() != color {
 			move, _ := GetBoardNotation(i-1, j+2)
@@ -1018,7 +1138,7 @@ func (k Knight) getValidMoves(color string, frow, fcol int) []string {
 	// 	   v
 	i = frow
 	j = fcol
-	for i+1 >= 0 && j+2 >= 0 {
+	if i+1 < 0 && j+2 < 8 {
 		piece, _ := k.board.get(i+1, j+2)
 		if piece == nil || piece.getColor() != color {
 			move, _ := GetBoardNotation(i+1, j+2)
@@ -1028,8 +1148,9 @@ func (k Knight) getValidMoves(color string, frow, fcol int) []string {
 
 	return validMoves
 }
-func (k Knight) getAllMoves(color string, frow, fcol int) []string {
+func (k Knight) getAllMoves(frow, fcol int) []string {
 	validMoves := make([]string, 0)
+	knightColor := k.getColor()
 
 	i := frow
 	j := fcol
@@ -1037,7 +1158,7 @@ func (k Knight) getAllMoves(color string, frow, fcol int) []string {
 	//   k
 	if i-2 >= 0 && j-1 >= 0 {
 		piece, _ := k.board.get(i-2, j-1)
-		if piece == nil || piece.getColor() == color {
+		if piece == nil || piece.getColor() == knightColor {
 			move, _ := GetBoardNotation(i-2, j-1)
 			validMoves = append(validMoves, move)
 		}
@@ -1046,9 +1167,9 @@ func (k Knight) getAllMoves(color string, frow, fcol int) []string {
 	//   k
 	i = frow
 	j = fcol
-	for i-2 >= 0 && j+1 < 8 {
+	if i-2 >= 0 && j+1 < 8 {
 		piece, _ := k.board.get(i-2, j+1)
-		if piece == nil || piece.getColor() == color {
+		if piece == nil || piece.getColor() == knightColor {
 			move, _ := GetBoardNotation(i-2, j+1)
 			validMoves = append(validMoves, move)
 		}
@@ -1057,9 +1178,9 @@ func (k Knight) getAllMoves(color string, frow, fcol int) []string {
 	//   v
 	i = frow
 	j = fcol
-	for i+2 < 8 && j-1 >= 0 {
+	if i+2 < 8 && j-1 >= 0 {
 		piece, _ := k.board.get(i+2, j-1)
-		if piece == nil || piece.getColor() == color {
+		if piece == nil || piece.getColor() == knightColor {
 			move, _ := GetBoardNotation(i+2, j-1)
 			validMoves = append(validMoves, move)
 		}
@@ -1068,9 +1189,9 @@ func (k Knight) getAllMoves(color string, frow, fcol int) []string {
 	//    v
 	i = frow
 	j = fcol
-	for i+2 >= 0 && j+1 >= 0 {
+	if i+2 < 8 && j+1 < 8 {
 		piece, _ := k.board.get(i+2, j+1)
-		if piece == nil || piece.getColor() == color {
+		if piece == nil || piece.getColor() == knightColor {
 			move, _ := GetBoardNotation(i+2, j+1)
 			validMoves = append(validMoves, move)
 		}
@@ -1079,9 +1200,9 @@ func (k Knight) getAllMoves(color string, frow, fcol int) []string {
 	//   v
 	i = frow
 	j = fcol
-	for i+1 >= 0 && j-2 >= 0 {
+	if i+1 < 8 && j-2 >= 0 {
 		piece, _ := k.board.get(i+1, j-2)
-		if piece == nil || piece.getColor() == color {
+		if piece == nil || piece.getColor() == knightColor {
 			move, _ := GetBoardNotation(i+1, j-2)
 			validMoves = append(validMoves, move)
 		}
@@ -1090,20 +1211,20 @@ func (k Knight) getAllMoves(color string, frow, fcol int) []string {
 	//   |--k
 	i = frow
 	j = fcol
-	for i-1 >= 0 && j-2 >= 0 {
+	if i-1 >= 0 && j-2 >= 0 {
 		piece, _ := k.board.get(i-1, j-2)
-		if piece == nil || piece.getColor() == color {
+		if piece == nil || piece.getColor() == knightColor {
 			move, _ := GetBoardNotation(i-1, j-2)
 			validMoves = append(validMoves, move)
 		}
 	}
-	//   	^
+	//   	  ^
 	//   k--|
 	i = frow
 	j = fcol
-	for i-1 >= 0 && j+2 >= 0 {
+	if i-1 >= 0 && j+2 < 8 {
 		piece, _ := k.board.get(i-1, j+2)
-		if piece == nil || piece.getColor() == color {
+		if piece == nil || piece.getColor() == knightColor {
 			move, _ := GetBoardNotation(i-1, j+2)
 			validMoves = append(validMoves, move)
 		}
@@ -1113,14 +1234,13 @@ func (k Knight) getAllMoves(color string, frow, fcol int) []string {
 	// 	   v
 	i = frow
 	j = fcol
-	for i+1 >= 0 && j+2 >= 0 {
+	if i+1 < 8 && j+2 < 8 {
 		piece, _ := k.board.get(i+1, j+2)
-		if piece == nil || piece.getColor() == color {
+		if piece == nil || piece.getColor() == knightColor {
 			move, _ := GetBoardNotation(i+1, j+2)
 			validMoves = append(validMoves, move)
 		}
 	}
-
 	return validMoves
 }
 
@@ -1138,7 +1258,7 @@ func (k Knight) isCheck(color string, row, col int) bool {
 	//   k
 	i = row
 	j = col
-	for i-2 >= 0 && j+1 < 8 {
+	if i-2 >= 0 && j+1 < 8 {
 		if haveKing(k.board, color, i-2, j+1) == true {
 			return true
 		}
@@ -1147,7 +1267,7 @@ func (k Knight) isCheck(color string, row, col int) bool {
 	//   v
 	i = row
 	j = col
-	for i+2 < 8 && j-1 >= 0 {
+	if i+2 < 8 && j-1 >= 0 {
 		if haveKing(k.board, color, i+2, j-1) == true {
 			return true
 		}
@@ -1156,16 +1276,16 @@ func (k Knight) isCheck(color string, row, col int) bool {
 	//    v
 	i = row
 	j = col
-	for i+2 >= 0 && j+1 >= 0 {
+	if i+2 < 8 && j+1 < 8 {
 		if haveKing(k.board, color, i+2, j+1) == true {
 			return true
 		}
 	}
-	//   |--|k
+	//   |--k
 	//   v
 	i = row
 	j = col
-	for i+1 >= 0 && j-2 >= 0 {
+	if i+1 < 8 && j-2 >= 0 {
 		if haveKing(k.board, color, i+1, j-2) == true {
 			return true
 		}
@@ -1174,16 +1294,16 @@ func (k Knight) isCheck(color string, row, col int) bool {
 	//   |--k
 	i = row
 	j = col
-	for i-1 >= 0 && j-2 >= 0 {
+	if i-1 >= 0 && j-2 >= 0 {
 		if haveKing(k.board, color, i-1, j-2) == true {
 			return true
 		}
 	}
-	//   	^
+	//   	  ^
 	//   k--|
 	i = row
 	j = col
-	for i-1 >= 0 && j+2 >= 0 {
+	if i-1 >= 0 && j+2 < 8 {
 		if haveKing(k.board, color, i-1, j+2) == true {
 			return true
 		}
@@ -1192,7 +1312,7 @@ func (k Knight) isCheck(color string, row, col int) bool {
 	// 	   v
 	i = row
 	j = col
-	for i+1 >= 0 && j+2 >= 0 {
+	if i+1 < 8 && j+2 < 8 {
 		if haveKing(k.board, color, i+1, j+2) == true {
 			return true
 		}
@@ -1281,21 +1401,18 @@ func (r Rook) getValidMoves(color string, frow, fcol int) []string {
 	}
 	return validMoves
 }
-func (r Rook) getAllMoves(color string, frow, fcol int) []string {
+func (r Rook) getAllMoves(frow, fcol int) []string {
 	validMoves := make([]string, 0)
+	rookColor := r.getColor()
 
 	i := frow
 	j := fcol
 	for i+1 < 8 { // down
 		piece, _ := r.board.get(i+1, j)
-		if piece == nil {
+		if piece == nil || piece.getColor() == rookColor {
 			move, _ := GetBoardNotation(i+1, j)
 			validMoves = append(validMoves, move)
 			i++
-		} else if piece.getColor() == color {
-			move, _ := GetBoardNotation(i+1, j)
-			validMoves = append(validMoves, move)
-			break
 		} else {
 			break
 		}
@@ -1305,14 +1422,10 @@ func (r Rook) getAllMoves(color string, frow, fcol int) []string {
 	j = fcol
 	for i-1 >= 0 { // up
 		piece, _ := r.board.get(i-1, j)
-		if piece == nil {
+		if piece == nil || piece.getColor() == rookColor {
 			move, _ := GetBoardNotation(i-1, j)
 			validMoves = append(validMoves, move)
 			i--
-		} else if piece.getColor() == color {
-			move, _ := GetBoardNotation(i-1, j)
-			validMoves = append(validMoves, move)
-			break
 		} else {
 			break
 		}
@@ -1321,14 +1434,10 @@ func (r Rook) getAllMoves(color string, frow, fcol int) []string {
 	j = fcol
 	for j+1 < 8 { // right
 		piece, _ := r.board.get(i, j+1)
-		if piece == nil {
+		if piece == nil || piece.getColor() == rookColor {
 			move, _ := GetBoardNotation(i, j+1)
 			validMoves = append(validMoves, move)
 			j++
-		} else if piece.getColor() == color {
-			move, _ := GetBoardNotation(i, j+1)
-			validMoves = append(validMoves, move)
-			break
 		} else {
 			break
 		}
@@ -1337,7 +1446,7 @@ func (r Rook) getAllMoves(color string, frow, fcol int) []string {
 	j = fcol
 	for j-1 >= 0 { // left
 		piece, _ := r.board.get(i, j-1)
-		if piece == nil || piece.getColor() == color {
+		if piece == nil || piece.getColor() == rookColor {
 			move, _ := GetBoardNotation(i, j-1)
 			validMoves = append(validMoves, move)
 			j--
@@ -1390,7 +1499,6 @@ func (r Rook) move(color string, frow, fcol, trow, tcol int) error {
 		return errors.New("Invalid move: Can't move other player piece.")
 	}
 
-	// check validity of pawn moves
 	validMoves := r.getValidMoves(color, frow, fcol)
 	destPlace, _ := GetBoardNotation(trow, tcol)
 
@@ -1398,19 +1506,22 @@ func (r Rook) move(color string, frow, fcol, trow, tcol int) error {
 		return errors.New("Invalid move: Rook cant be moved there")
 	}
 
-	// everthing is ok now move
 	src, _ := r.board.get(frow, fcol)
 	dest, _ := r.board.get(trow, tcol)
-	if dest != nil && src.getColor() != dest.getColor() { // capture piece
-		fmt.Println("capturing", dest.getName())
+	if dest != nil && src.getColor() != dest.getColor() {
+		fmt.Println("Capturing", dest.getName())
 	}
 	if r.isCheck(color, trow, tcol) == true {
-		fmt.Println("Check!")
+		if isCheckMate(r.board, r.getColor()) == true {
+			fmt.Println("Check mate!")
+		} else {
+			fmt.Println("Check!")
+		}
+		return nil
 	}
 	r.board.set(frow, fcol, nil)
 	r.board.set(trow, tcol, src)
 
-	fmt.Println(validMoves)
 	return nil
 }
 func (r Rook) String() string {
@@ -1508,10 +1619,11 @@ func (p Pawn) getValidMoves(color string, frow, fcol int) []string {
 	}
 	return validMoves
 }
-func (p Pawn) getAllMoves(color string, frow, fcol int) []string {
+func (p Pawn) getAllMoves(frow, fcol int) []string {
 	validMoves := make([]string, 0)
 
-	if color == "white" {
+	pawnColor := p.getColor()
+	if pawnColor == "white" {
 		i := frow
 		j := fcol
 		if i+1 < 8 { // down
@@ -1530,14 +1642,14 @@ func (p Pawn) getAllMoves(color string, frow, fcol int) []string {
 		}
 		if i+1 < 8 && j+1 < 8 { // right diag down
 			piece, _ := p.board.get(i+1, j+1)
-			if piece != nil && piece.getColor() == color {
+			if piece != nil && piece.getColor() == pawnColor {
 				move, _ := GetBoardNotation(i+1, j+1)
 				validMoves = append(validMoves, move)
 			}
 		}
 		if i+1 >= 0 && j-1 >= 0 { // left diag down
 			piece, _ := p.board.get(i+1, j-1)
-			if piece != nil && piece.getColor() == color {
+			if piece != nil && piece.getColor() == pawnColor {
 				move, _ := GetBoardNotation(i+1, j-1)
 				validMoves = append(validMoves, move)
 			}
@@ -1563,14 +1675,14 @@ func (p Pawn) getAllMoves(color string, frow, fcol int) []string {
 		}
 		if i-1 < 8 && j-1 < 8 { // left diag up
 			piece, _ := p.board.get(i-1, j-1)
-			if piece != nil && piece.getColor() == color {
+			if piece != nil && piece.getColor() == pawnColor {
 				move, _ := GetBoardNotation(i-1, j-1)
 				validMoves = append(validMoves, move)
 			}
 		}
 		if i-1 >= 0 && j+1 >= 0 { // right diag up
 			piece, _ := p.board.get(i+1, j-1)
-			if piece != nil && piece.getColor() == color {
+			if piece != nil && piece.getColor() == pawnColor {
 				move, _ := GetBoardNotation(i-1, j+1)
 				validMoves = append(validMoves, move)
 			}
@@ -1619,19 +1731,22 @@ func (p Pawn) move(color string, frow, fcol, trow, tcol int) error {
 		return errors.New("Invalid move: Pawn cant be moved there")
 	}
 
-	// everthing is ok now move
 	src, _ := p.board.get(frow, fcol)
 	dest, _ := p.board.get(trow, tcol)
-	if dest != nil && src.getColor() != dest.getColor() { // capture piece
-		fmt.Println("capturing", dest.getName())
+	if dest != nil && src.getColor() != dest.getColor() {
+		fmt.Println("Capturing", dest.getName())
 	}
 	if p.isCheck(color, trow, tcol) == true {
-		fmt.Println("Check!")
+		if isCheckMate(p.board, p.getColor()) == true {
+			fmt.Println("Check mate!")
+		} else {
+			fmt.Println("Check!")
+		}
+		return nil
 	}
 	p.board.set(frow, fcol, nil)
 	p.board.set(trow, tcol, src)
 
-	fmt.Println(validMoves)
 	return nil
 }
 func (p Pawn) String() string {
@@ -1640,7 +1755,25 @@ func (p Pawn) String() string {
 
 // Game structures
 type Board struct {
-	board [8][8]Box
+	board     [8][8]Box
+	whiteKing string
+	blackKing string
+}
+
+func (b *Board) setKingLocation(color string, kingPosition string) {
+	if color == "white" {
+		b.whiteKing = kingPosition
+	} else {
+		b.blackKing = kingPosition
+	}
+
+}
+func (b *Board) getKingLocation(color string) string {
+	if color == "white" {
+		return b.whiteKing
+	} else {
+		return b.blackKing
+	}
 }
 
 func (b *Board) set(i, j int, p Piece) {
@@ -1668,7 +1801,6 @@ func (b *Board) move(p *Player, move string) error {
 func (b *Board) parseMove(move string) (int, int, int, int, error) {
 	playerMove := strings.Split(move, "->")
 
-	fmt.Println(playerMove)
 	colChar := string(playerMove[0][0])
 	rowIndex := string(playerMove[0][1])
 
@@ -1702,6 +1834,7 @@ func (b *Board) SetUp() {
 	b.set(i, j, Queen{"Qw", "white", b})
 	i, j = GetIndex("e", 8)
 	b.set(i, j, King{"+w", "white", b})
+	b.setKingLocation("white", "e8")
 	i, j = GetIndex("f", 8)
 	b.set(i, j, Knight{"Kw", "white", b})
 	i, j = GetIndex("g", 8)
@@ -1736,6 +1869,7 @@ func (b *Board) SetUp() {
 	b.set(i, j, Bishop{"Bb", "black", b})
 	i, j = GetIndex("d", 5)
 	b.set(i, j, King{"+b", "black", b})
+	b.setKingLocation("black", "d5")
 	i, j = GetIndex("e", 1)
 	b.set(i, j, Queen{"Qb", "black", b})
 	i, j = GetIndex("f", 1)
@@ -1838,12 +1972,12 @@ func (g *Game) start() {
 				fmt.Println(err.Error())
 				continue
 			}
-			//break
+			break
 
 		} else {
 			turn = 0
 			move := g.player2.getMove(g.Board)
-			err := g.Board.move(g.player1, move)
+			err := g.Board.move(g.player2, move)
 			if err != nil {
 				fmt.Println(err.Error())
 				continue
@@ -1855,23 +1989,23 @@ func (g *Game) start() {
 }
 
 type Player struct {
-	name  string
-	color string
+	name     string
+	color    string
+	captured []string
 }
 
 func (p *Player) getMove(board *Board) string {
-	fmt.Printf("Player: %s ", p.name)
+	fmt.Printf("Player: %s (%s):", p.name, p.color)
 	var move string
 	fmt.Scanf("%s", &move)
 	return move
 }
 func main() {
 	// setup player
-	p1 := Player{"adeel", "white"}
-	p2 := Player{"wahaj", "black"}
+	p1 := Player{name: "adeel", color: "white", captured: make([]string, 1)}
+	p2 := Player{name: "wahaj", color: "black", captured: make([]string, 1)}
 
 	g := Game{}
 	g.Initialize(&p1, &p2)
-	//g.printBoard()
 	g.start()
 }
