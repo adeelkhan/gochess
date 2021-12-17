@@ -273,7 +273,12 @@ func (q Queen) isCheck(color string, row, col int) bool {
 		if HaveKing(q.board, color, i+1, j) == true {
 			return true
 		}
-		i++
+		piece, _ := q.board.get(i+1, j)
+		if piece == nil { // keep searching
+			i++
+		} else {
+			break
+		}
 	}
 	i = row
 	j = col
@@ -281,7 +286,12 @@ func (q Queen) isCheck(color string, row, col int) bool {
 		if HaveKing(q.board, color, i-1, j) == true {
 			return true
 		}
-		i--
+		piece, _ := q.board.get(i-1, j)
+		if piece == nil { // keep searching
+			i--
+		} else {
+			break
+		}
 	}
 	i = row
 	j = col
@@ -289,7 +299,12 @@ func (q Queen) isCheck(color string, row, col int) bool {
 		if HaveKing(q.board, color, i, j+1) == true {
 			return true
 		}
-		j++
+		piece, _ := q.board.get(i, j+1)
+		if piece == nil { // keep searching
+			j++
+		} else {
+			break
+		}
 	}
 	i = row
 	j = col
@@ -297,7 +312,12 @@ func (q Queen) isCheck(color string, row, col int) bool {
 		if HaveKing(q.board, color, i, j-1) == true {
 			return true
 		}
-		j--
+		piece, _ := q.board.get(i, j-1)
+		if piece == nil { // keep searching
+			j--
+		} else {
+			break
+		}
 	}
 	i = row
 	j = col
@@ -305,8 +325,13 @@ func (q Queen) isCheck(color string, row, col int) bool {
 		if HaveKing(q.board, color, i+1, j+1) == true {
 			return true
 		}
-		i++
-		j++
+		piece, _ := q.board.get(i+1, j+1)
+		if piece == nil { // keep searching
+			i++
+			j++
+		} else {
+			break
+		}
 	}
 	i = row
 	j = col
@@ -314,17 +339,27 @@ func (q Queen) isCheck(color string, row, col int) bool {
 		if HaveKing(q.board, color, i-1, j+1) == true {
 			return true
 		}
-		i--
-		j++
+		piece, _ := q.board.get(i-1, j+1)
+		if piece == nil { // keep searching
+			i--
+			j++
+		} else {
+			break
+		}
 	}
 	i = row
 	j = col
 	for i-1 >= 0 && j+1 < 8 { // up diagonal left
-		if HaveKing(q.board, color, i-1, j+1) == true {
+		if HaveKing(q.board, color, i-1, j-1) == true {
 			return true
 		}
-		i--
-		j++
+		piece, _ := q.board.get(i-1, j-1)
+		if piece == nil { // keep searching
+			i--
+			j--
+		} else {
+			break
+		}
 	}
 	i = row
 	j = col
@@ -332,8 +367,13 @@ func (q Queen) isCheck(color string, row, col int) bool {
 		if HaveKing(q.board, color, i+1, j-1) == true {
 			return true
 		}
-		i++
-		j--
+		piece, _ := q.board.get(i+1, j-1)
+		if piece == nil { // keep searching
+			i++
+			j--
+		} else {
+			break
+		}
 	}
 
 	return false
@@ -359,10 +399,10 @@ func (q Queen) move(color string, frow, fcol, trow, tcol int) error {
 	if q.isCheck(color, trow, tcol) == true {
 		if IsCheckMate(q.board, q.getColor()) == true {
 			fmt.Println("Check mate!")
+			return nil
 		} else {
 			fmt.Println("Check!")
 		}
-		return nil
 	}
 	q.board.set(frow, fcol, nil)
 	q.board.set(trow, tcol, src)

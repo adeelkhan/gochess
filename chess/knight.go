@@ -31,7 +31,12 @@ func (k Knight) move(color string, frow, fcol, trow, tcol int) error {
 		fmt.Println("Capturing", dest.getName())
 	}
 	if k.isCheck(color, trow, tcol) == true {
-		fmt.Println("Check!")
+		if IsCheckMate(k.board, k.getColor()) == true {
+			fmt.Println("Check mate!")
+			return nil
+		} else {
+			fmt.Println("Check!")
+		}
 	}
 	k.board.set(frow, fcol, nil)
 	k.board.set(trow, tcol, src)

@@ -209,10 +209,10 @@ func (p Pawn) move(color string, frow, fcol, trow, tcol int) error {
 	if p.isCheck(color, trow, tcol) == true {
 		if IsCheckMate(p.board, p.getColor()) == true {
 			fmt.Println("Check mate!")
+			return nil
 		} else {
 			fmt.Println("Check!")
 		}
-		return nil
 	}
 	p.board.set(frow, fcol, nil)
 	p.board.set(trow, tcol, src)

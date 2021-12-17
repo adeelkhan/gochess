@@ -46,7 +46,8 @@ func Contains(s []string, e string) bool {
 
 func HaveKing(board *Board, color string, i, j int) bool {
 	piece, _ := board.get(i, j)
-	return piece != nil && string(piece.getName()[0]) == "+" && color != piece.getColor()
+	return piece != nil &&
+		string(piece.getName()[0]) == "+" && color != piece.getColor()
 }
 func GetKingValidMoves(board *Board, color string, frow, fcol int) []string {
 	validMoves := make([]string, 0)

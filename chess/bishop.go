@@ -32,10 +32,10 @@ func (b Bishop) move(color string, frow, fcol, trow, tcol int) error {
 	if b.isCheck(color, trow, tcol) == true {
 		if IsCheckMate(b.board, b.getColor()) == true {
 			fmt.Println("Check mate!")
+			return nil
 		} else {
 			fmt.Println("Check!")
 		}
-		return nil
 	}
 	b.board.set(frow, fcol, nil)
 	b.board.set(trow, tcol, src)

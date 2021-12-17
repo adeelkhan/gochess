@@ -57,18 +57,17 @@ func (g *Game) Start() {
 	g.printBoard()
 	for {
 		if turn == 0 {
-			turn = 0
-			// move := g.player1.getMove(g.Board)
-			err := g.Board.move(g.player1, "d8->d7")
+			turn = 1
+			move := g.player1.getMove(g.Board)
+			err := g.Board.move(g.player1, move)
 
 			if err != nil {
 				fmt.Println(err.Error())
 				continue
 			}
-			break
 
 		} else {
-			turn = 0
+			turn = 1
 			move := g.player2.getMove(g.Board)
 			err := g.Board.move(g.player2, move)
 			if err != nil {

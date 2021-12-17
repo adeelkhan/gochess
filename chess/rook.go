@@ -190,10 +190,10 @@ func (r Rook) move(color string, frow, fcol, trow, tcol int) error {
 	if r.isCheck(color, trow, tcol) == true {
 		if IsCheckMate(r.board, r.getColor()) == true {
 			fmt.Println("Check mate!")
+			return nil
 		} else {
 			fmt.Println("Check!")
 		}
-		return nil
 	}
 	r.board.set(frow, fcol, nil)
 	r.board.set(trow, tcol, src)
